@@ -2,7 +2,14 @@ define(['libs/parse', 'libs/lodash'], function(Parse, _){
 
 
 	var model = Parse.Object.extend({
-		className: "Scraper"
+		className: "Scraper",
+		getSelectors: function() {
+			return this.get('selectors');
+		},	
+		countSelectors: function() {
+			if (!this.getSelectors()) return 0;
+			return _.keys(this.getSelectors()).length;		
+		}
 	});
 
 

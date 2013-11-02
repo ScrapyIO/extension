@@ -26412,7 +26412,14 @@ define('data/Scraper',['libs/parse', 'libs/lodash'], function(Parse, _){
 
 
 	var model = Parse.Object.extend({
-		className: "Scraper"
+		className: "Scraper",
+		getSelectors: function() {
+			return this.get('selectors');
+		},	
+		countSelectors: function() {
+			if (!this.getSelectors()) return 0;
+			return _.keys(this.getSelectors()).length;		
+		}
 	});
 
 
@@ -30728,7 +30735,7 @@ Handlebars.template = Handlebars.VM.template;
 // lib/handlebars/browser-suffix.js
 })(Handlebars);
 ;
-define("libs/handlebars", (function (global) {
+define("handlebars", (function (global) {
     return function () {
         var ret, fn;
         return ret || global.Handlebars;
@@ -31305,67 +31312,547 @@ define('helpers/Hub',['libs/eventemitter2'], function(EventEmitter){
 
     return instance;
 });
-define('views/SelectorPopover',['libs/bootstrap', 'libs/handlebars', 'data/Scraper', 'helpers/Hub'], function(_Bootstrap, Handlebars, Scraper, Hub){
+/*
+	SMOKE.JS - 0.1.3
+	(c) 2011-2013 Jonathan Youngblood
+	demos / documentation: http://smoke-js.com/ 
+*/
+
+;(function() {
+
+	/*jslint browser: true, onevar: true, undef: true, nomen: false, eqeqeq: true, bitwise: true, regexp: true, newcap: true, immed: true */
+	
+	var smoke = {
+	  smoketimeout: [],
+	  init: false,
+	  zindex: 1000,
+	  i: 0,
+	
+		bodyload: function(id) {
+			var ff = document.createElement('div');
+					ff.setAttribute('id','smoke-out-'+id);
+					ff.className = 'smoke-base';
+					ff.style.zIndex = smoke.zindex;
+					smoke.zindex++;
+					document.body.appendChild(ff);
+		},
+	
+		newdialog: function() {
+			var newid = new Date().getTime();
+					newid = Math.random(1,99) + newid;	
+	
+			if (!smoke.init) {		
+		    smoke.listen(window,"load", function() {
+			    smoke.bodyload(newid);
+				});
+			}else{
+		    smoke.bodyload(newid);		
+			}
+	
+			return newid;
+		},
+	
+		forceload: function() {},
+	
+		build: function (e, f) {
+			smoke.i++;
+			
+			f.stack = smoke.i;
+	
+			e = e.replace(/\n/g,'<br />');
+			e = e.replace(/\r/g,'<br />');
+	
+			var prompt = '',
+			    ok = 'OK',
+			    cancel = 'Cancel',
+			    classname = '',
+			    buttons = '',
+			    box;
+	
+			if (f.type === 'prompt') {
+				prompt = 
+					'<div class="dialog-prompt">'+
+						'<input id="dialog-input-'+f.newid+'" type="text" ' + (f.params.value ? 'value="' + f.params.value + '"' : '') + ' />'+
+					'</div>';
+			}
+	
+			if (f.params.ok) {
+				ok = f.params.ok;
+			}
+			
+			if (f.params.cancel) {
+				cancel = f.params.cancel;
+			}
+			
+			if (f.params.classname) {
+				classname = f.params.classname;
+			}
+	
+			if (f.type !== 'signal') {
+				buttons = '<div class="dialog-buttons">';
+				if (f.type === 'alert') {
+					buttons +=
+						'<button id="alert-ok-'+f.newid+'">'+ok+'</button>';
+				}
+				 else if (f.type === 'quiz') {
+	
+					if (f.params.button_1) {
+						buttons +=
+							'<button class="quiz-button" id="'+f.type+'-ok1-'+f.newid+'">'+f.params.button_1+'</button>';
+					}
+	
+					if (f.params.button_2) {
+						buttons +=
+							'<button class="quiz-button" id="'+f.type+'-ok2-'+f.newid+'">'+f.params.button_2+'</button>';
+					}
+	
+					if (f.params.button_3) {
+						buttons +=
+							'<button class="quiz-button" id="'+f.type+'-ok3-'+f.newid+'">'+f.params.button_3+'</button>';
+					}
+					if (f.params.button_cancel) {
+						buttons +=
+							'<button id="'+f.type+'-cancel-'+f.newid+'" class="cancel">'+f.params.button_cancel+'</button>';
+					}
+	
+				}
+				
+				 else if (f.type === 'prompt' || f.type === 'confirm') {
+					if (f.params.reverseButtons) {
+						buttons +=
+							'<button id="'+f.type+'-ok-'+f.newid+'">'+ok+'</button>' +
+							'<button id="'+f.type+'-cancel-'+f.newid+'" class="cancel">'+cancel+'</button>';				
+					} else {
+						buttons +=
+							'<button id="'+f.type+'-cancel-'+f.newid+'" class="cancel">'+cancel+'</button>'+
+							'<button id="'+f.type+'-ok-'+f.newid+'">'+ok+'</button>';
+					}
+				}
+				buttons += '</div>';
+			}
+	
+	
+			box = 
+				'<div id="smoke-bg-'+f.newid+'" class="smokebg"></div>'+
+				'<div class="dialog smoke '+classname+'">'+
+					'<div class="dialog-inner">'+
+							e+
+							prompt+
+							buttons+			
+					'</div>'+
+				'</div>';
+	
+			if (!smoke.init) {		
+				smoke.listen(window,"load", function() {
+					smoke.finishbuild(e,f,box);
+				});
+			} else{
+				smoke.finishbuild(e,f,box);
+			}
+	
+		},
+	
+		finishbuild: function(e, f, box) {
+		
+			var ff = document.getElementById('smoke-out-'+f.newid);
+	
+			ff.className = 'smoke-base smoke-visible  smoke-' + f.type;
+			ff.innerHTML = box;
+					
+			while (ff.innerHTML === "") {
+				ff.innerHTML = box;
+			}
+			
+			if (smoke.smoketimeout[f.newid]) {
+				clearTimeout(smoke.smoketimeout[f.newid]);
+			}
+	
+			smoke.listen(
+				document.getElementById('smoke-bg-'+f.newid),
+				"click", 
+				function () {
+					smoke.destroy(f.type, f.newid);
+					if (f.type === 'prompt' || f.type === 'confirm' || f.type === 'quiz') {
+						f.callback(false);
+					} else if (f.type === 'alert' && typeof f.callback !== 'undefined') {
+						f.callback();
+					}	
+				}
+			);
+		
+		
+			switch (f.type) {
+				case 'alert': 
+					smoke.finishbuildAlert(e, f, box);
+					break;
+				case 'confirm':
+					smoke.finishbuildConfirm(e, f, box);
+					break;
+				case 'quiz':
+					smoke.finishbuildQuiz(e, f, box);
+					break;
+				case 'prompt':
+					smoke.finishbuildPrompt(e, f, box);
+					break;
+				case 'signal':
+					smoke.finishbuildSignal(e, f, box);
+					break;
+				default:
+					throw "Unknown type: " + f.type;
+			}
+		},
+		
+		finishbuildAlert: function (e, f, box) {
+			smoke.listen(
+				document.getElementById('alert-ok-'+f.newid),
+				"click", 
+				function () {
+					smoke.destroy(f.type, f.newid);
+					if (typeof f.callback !== 'undefined') {
+						f.callback();
+					}
+				}
+			);
+		
+			document.onkeyup = function (e) {
+				if (!e) {
+					e = window.event;
+				}
+				if (e.keyCode === 13 || e.keyCode === 32 || e.keyCode === 27) {
+					smoke.destroy(f.type, f.newid);
+					if (typeof f.callback !== 'undefined') {
+						f.callback();
+					}					
+				}
+			};	
+		},
+		
+		finishbuildConfirm: function (e, f, box) {
+			smoke.listen(
+				document.getElementById('confirm-cancel-' + f.newid),
+				"click", 
+				function () 
+				{
+					smoke.destroy(f.type, f.newid);
+					f.callback(false);
+				}
+			);
+			
+			smoke.listen(
+				document.getElementById('confirm-ok-' + f.newid),
+				"click", 
+				function () 
+				{
+					smoke.destroy(f.type, f.newid);
+					f.callback(true);
+				}
+			);
+					
+			document.onkeyup = function (e) {
+				if (!e) {
+					e = window.event;
+				}
+				if (e.keyCode === 13 || e.keyCode === 32) {
+					smoke.destroy(f.type, f.newid);
+					f.callback(true);
+				} else if (e.keyCode === 27) {
+					smoke.destroy(f.type, f.newid);
+					f.callback(false);
+				}
+			};	
+		},
+		
+		finishbuildQuiz: function (e, f, box) {
+			smoke.listen(
+				document.getElementById('quiz-cancel-' + f.newid),
+				"click", 
+				function () 
+				{
+					smoke.destroy(f.type, f.newid);
+					f.callback(false);
+				}
+			);
+	
+	
+			if (a = document.getElementById('quiz-ok1-'+f.newid))
+			smoke.listen(
+				a,
+				"click", 
+				function () {
+					smoke.destroy(f.type, f.newid);
+					f.callback(a.innerHTML);
+				}
+			);
+	
+	
+			if (b = document.getElementById('quiz-ok2-'+f.newid))
+			smoke.listen(
+				b,
+				"click", 
+				function () {
+					smoke.destroy(f.type, f.newid);
+					f.callback(b.innerHTML);
+				}
+			);
+	
+	
+			if (c = document.getElementById('quiz-ok3-'+f.newid))
+			smoke.listen(
+				c,
+				"click", 
+				function () {
+					smoke.destroy(f.type, f.newid);
+					f.callback(c.innerHTML);
+				}
+			);
+	
+			document.onkeyup = function (e) {
+				if (!e) {
+					e = window.event;
+				}
+				if (e.keyCode === 27) {
+					smoke.destroy(f.type, f.newid);
+					f.callback(false);
+				}
+			};	
+		
+		},
+		
+		finishbuildPrompt: function (e, f, box) {
+			var pi = document.getElementById('dialog-input-'+f.newid);
+				
+			setTimeout(function () {
+				pi.focus();
+				pi.select();
+			}, 100);
+		
+			smoke.listen(
+				document.getElementById('prompt-cancel-'+f.newid),
+				"click", 
+				function () {
+					smoke.destroy(f.type, f.newid);
+					f.callback(false);
+				}
+			);
+		
+			smoke.listen(
+				document.getElementById('prompt-ok-'+f.newid),
+				"click", 
+				function () {
+					smoke.destroy(f.type, f.newid);
+					f.callback(pi.value);
+				}
+			);
+					
+			document.onkeyup = function (e) {
+				if (!e) {
+					e = window.event;
+				}
+				
+				if (e.keyCode === 13) {
+					smoke.destroy(f.type, f.newid);
+					f.callback(pi.value);
+				} else if (e.keyCode === 27) {
+					smoke.destroy(f.type, f.newid);
+					f.callback(false);
+				}
+			};
+		},
+		
+		finishbuildSignal: function (e, f, box) {
+	
+	
+			document.onkeyup = function (e) {
+				if (!e) {
+					e = window.event;
+				}
+				if (e.keyCode === 27) {
+					smoke.destroy(f.type, f.newid);
+					if (typeof f.callback !== 'undefined') {
+						f.callback();
+					}
+				}
+			};	
+	
+			smoke.smoketimeout[f.newid] = setTimeout(function () {
+				smoke.destroy(f.type, f.newid);
+				if (typeof f.callback !== 'undefined') {
+					f.callback();
+				}
+			}, f.timeout);
+		},
+		
+				
+		destroy: function (type,id) {
+	
+			var box = document.getElementById('smoke-out-'+id);
+	
+			if (type !== 'quiz') {
+			    var okButton = document.getElementById(type+'-ok-'+id);
+			}
+	
+	    var cancelButton = document.getElementById(type+'-cancel-'+id);
+			box.className = 'smoke-base';
+	
+			if (okButton) {
+				smoke.stoplistening(okButton, "click", function() {});
+				document.onkeyup = null;
+			}
+			
+			if (type === 'quiz') {
+				var quiz_buttons = document.getElementsByClassName("quiz-button");
+				for (var i = 0; i < quiz_buttons.length; i++) {
+				smoke.stoplistening(quiz_buttons[i], "click", function() {});
+				document.onkeyup = null;
+				}			
+			}
+			
+			if (cancelButton) {
+				smoke.stoplistening(cancelButton, "click", function() {});
+			}
+			
+			smoke.i = 0;
+			box.innerHTML = '';
+		},
+	
+		alert: function (e, f, g) {
+			if (typeof g !== 'object') {
+				g = false;
+			}
+			
+			var id = smoke.newdialog();
+			
+			smoke.build(e, {
+				type:     'alert',
+				callback: f,
+				params:   g,
+				newid:    id
+			});
+		},
+		
+		signal: function (e, f, g) {
+			if (typeof g !== 'object') {
+				g = false;
+			}		
+
+			var duration = 5000;
+			if (g.duration !== 'undefined'){
+				duration = g.duration;
+			}
+			
+			var id = smoke.newdialog();
+			smoke.build(e, {
+				type:    'signal',
+				callback: f,
+				timeout: duration,
+				params:  g,
+				newid:   id
+			});
+		},
+		
+		confirm: function (e, f, g) {
+			if (typeof g !== 'object') {
+				g = false;
+			}
+			
+			var id = smoke.newdialog();
+			smoke.build(e, {
+				type:     'confirm',
+				callback: f,
+				params:   g,
+				newid:    id
+			});
+		},
+		
+		quiz: function (e, f, g) {
+			if (typeof g !== 'object') {
+				g = false;
+			}
+			
+			var id = smoke.newdialog();
+			smoke.build(e, {
+				type:     'quiz',
+				callback: f,
+				params:   g,
+				newid:    id
+			});
+		},
+		
+		prompt: function (e, f, g) {
+			if (typeof g !== 'object') {
+				g = false;
+			}
+			
+			var id = smoke.newdialog();
+			return smoke.build(e,{type:'prompt',callback:f,params:g,newid:id});
+		},
+		
+		listen: function (e, f, g) {
+	    if (e.addEventListener) {
+	      return e.addEventListener(f, g, false);
+	    } 
+	    
+	    if (e.attachEvent) {
+	      return e.attachEvent('on'+f, g);
+	    } 
+	    
+			return false;
+		},
+		
+		stoplistening: function (e, f, g) {	
+	    if (e.removeEventListener) {
+	      return e.removeEventListener("click", g, false);
+	    }
+	    
+	    if (e.detachEvent) {
+	      return e.detachEvent('on'+f, g);
+	    }
+	    
+	    return false;
+		}
+	};
+	
+	
+	smoke.init = true;
+
+	if (typeof module != 'undefined' && module.exports) {
+		module.exports = smoke;
+	}
+	else if (typeof define === 'function' && define.amd) {
+		define('libs/smoke',smoke);
+	}
+	else {
+		this.smoke = smoke;
+	}
+
+})();
+define('views/SelectorPopover',['libs/bootstrap', 'handlebars', 'data/Scraper', 'helpers/Hub', 'libs/smoke'], function(_Bootstrap, Handlebars, Scraper, Hub, smoke){
 	
 
 
 
-	var template = "<div>What name do you want to use?</div>";
-	template += '<div class="form-group"><input type="text" class="scrape-name" /></div>';
-	template += '<button class="btn btn-primary btn-block scrape-save">Save</button>'
-	template += '<button class="btn btn-info btn-block scrape-cancel">Cancel</button>'
+	var makePopover = function(sel, uniqueSelector, callback) {
+		var name = sel.data('scrapyIO');
+
+		if (!name) var title = "What name do you want to give to that selector?";
+		else var title = "You're already crawling this. Wanna edit the name?"
 
 
+		smoke.prompt(title, function(e){
+			callback(e, sel, uniqueSelector, name);
+		});
 
-	// Backbone style view
-	var View = Parse.View.extend({
-		events:{
-			"click .scrape-save": "save",
-			"keyup .scrape-name": "persistName"
-		},
-		initialize: function(opts) {	
-			// _.bindAll(this, 'save');
-		},
-		render: function() {
-			this.$el.html(template);
-			return this;
-		},
-		save: function() {
-			Hub.emit('addedNewSelectorWithName', this.model);
-		},
-		persistName: function(){
-			var elem = this.$el.find('input.scrape-name');
-			var data = elem.val();
-			this.model.name = data;
+		if (name) {
+			$('.smoke input').val(name);
 		}
 
-	});
-
-
-
-	var makePopover = function(sel, content, uniqueSelector) {
-
-		var model = {
-			selector: uniqueSelector
-		};
-
-		var view = new View({model: model});
-
-		sel.popover({
-			title: "Pick a name dude",
-			content: view.render().$el,
-			html: true,
-			placement: "bottom"
-		});
-		return sel;
 	}
 
 
 	return {
 
-		popover: function(sel, uniqueSelector) {
-			makePopover(sel, template, uniqueSelector);
-			return sel.popover('show');
+		popover: function(sel, uniqueSelector, callback) {
+			makePopover(sel, uniqueSelector, callback);
 		},
 		removeAllPopover: function() {
 
@@ -31404,40 +31891,25 @@ define('helpers/DOM',['libs/jquery', 'libs/unique', 'data/Scraper', 'views/Selec
 	var factory = {
 
 		selector: function() {
-			return $('*:not(:has(*))');
+			return $('*:not(:has(*), #scrape-logo)');
 		},
-		bindElements: function(selector) {
+		bindElements: function(selector, callback) {
 			selector.each(function(){
 		   		$(this).on('click', function(e){
 		   			
 		   			if (!$(this).hasClass('scrape-io')) var selector = $(this).getPath();
-		   			else var selector = $(this).parent().getPath();
-
-		   			console.log(selector);
-
-		   			SelectorPopover.removeAllPopover();
-		   			SelectorPopover.popover($(this), selector);
-
-
+					else var selector = $(this).parent().getPath();
+		   			
+		   			SelectorPopover.popover($(this), selector, callback);
 		   			e.preventDefault();
 		   			e.stopPropagation();
 					return false;
 		   		});	
 
-
-		   		$(this).on('mouseenter', function(){
-		   			$(this).css('border', '1px solid red');
-		   		})
-
-
-		   		$(this).on('mouseleave', function(){
-		   			$(this).css('border', 'none');
-		   		})
-
 		   });	
 		},
 		wrapText: function() {
-			$('*:has(*):not("body, iframe")').contents()
+			$('*:has(*):not("body, iframe, #scrape-logo")').contents()
 	        .filter(function(){
 	        	return this.nodeType == 3 && $.trim(this.data).length > 0;
 	        })
@@ -31454,11 +31926,24 @@ define('helpers/DOM',['libs/jquery', 'libs/unique', 'data/Scraper', 'views/Selec
 			});	
 		},
 		appendLogo:function() {
-			$('<div class="scrape-logo">S</div>').appendTo('body');
+			console.log('Appending');
+			$('<div id="scrape-logo"></div>').appendTo('body');
+		},
+		setLogoOnAlert: function() {
+			$('div#scrape-logo').addClass('alert');
 		},
 		highlightSelected: function(selectors) {
 			_.keys(selectors).forEach(function(name){
 				$(selectors[name]).addClass('scrape-highlight-selected');
+				$(selectors[name]).data('scrapyIO', name);
+			});
+		},
+		unbindLinks: function() {
+			$('a').on('click', function(e){
+
+				e.stopPropagation();
+				e.preventDefault();
+				return false;
 			});
 		}
 
@@ -31470,24 +31955,35 @@ define('helpers/DOM',['libs/jquery', 'libs/unique', 'data/Scraper', 'views/Selec
 
 
 });
-define('views/PageStats',['libs/parse', 'libs/handlebars'], function(Parse, Handlebars){
+define('views/CounterView',['libs/parse', 'handlebars'], function(Parse, Handlebars){
 
 
-	var template = "<div>";
-	template += "<div>Matching : <b>{{regex}}</b></div>"
-	template += "</div>";
-
+	var template = "{{count}}"
 
 
 	var view = Parse.View.extend({
-		className:"scrapy-stats",
+		id:"ScrapyIO-count",
 		tagName: "div",
-		initialize: function() {
-
+		events:{
+			"click": "onClick"
 		},
+		initialize: function() {
+			_.bindAll(this, 'onClick');
+		},	
 		render: function() {
-			this.$el.html(Handlebars.compile(template)(this.model.toJSON()));
+
+			var count = this.model.countSelectors();
+			this.$el.html(Handlebars.compile(template)({count: count}));
+
+			if (count == 0) this.$el.hide();
+			else this.$el.show();
+
 			return this;
+		},
+		onClick: function(e) {
+			console.log('Stats clicked');
+			e.stopPropagation();
+
 		}
 
 	});
@@ -31499,46 +31995,422 @@ define('views/PageStats',['libs/parse', 'libs/handlebars'], function(Parse, Hand
 
 
 });
-require(
-	['libs/livereload', 'libs/KeyboardJS', 'libs/jquery', 'helpers/DOM', 'libs/parse', 'data/Scraper', 'views/PageStats', 'helpers/Hub', 'libs/lodash'], 
-	function(livereload, KeyboardJS, $, DOM, Parse, Scraper, PageStats, Hub, _){
+define('templates',['handlebars'], function(Handlebars) {
 
-	// app entry is special combo key
+this["Templates"] = this["Templates"] || {};
 
-	var KeyboardJSHandler = KeyboardJS.on('shift + command', function() {	
-		// Init Parse
-		Parse.initialize("beTbPGy1fDKd4CkrbR6xqe3ZKa5KORh1FfYyr1S3", "5K3zERQWuyxLx06CZ1RO95KqkbnMivPAWUrWjurs");
+this["Templates"]["app/scripts/views/templates/Modal.hbs"] = Handlebars.template(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  var buffer = "", stack1, stack2, functionType="function", escapeExpression=this.escapeExpression, self=this;
 
-		// Wait for DOM to be Loaded to process data
+function program1(depth0,data) {
+  
+  var buffer = "", stack1, stack2;
+  buffer += "\n          <div class=\"ScrapyIOattributeRow\">\n            <b>";
+  if (stack1 = helpers.name) { stack1 = stack1.call(depth0, {hash:{},data:data}); }
+  else { stack1 = depth0.name; stack1 = typeof stack1 === functionType ? stack1.apply(depth0) : stack1; }
+  buffer += escapeExpression(stack1)
+    + "</b><a href=\"\" class=\"ScrapyIOdeleteAttribute\" data-attribute=\""
+    + escapeExpression(((stack1 = ((stack1 = depth0.dataList),stack1 == null || stack1 === false ? stack1 : stack1.name)),typeof stack1 === functionType ? stack1.apply(depth0) : stack1))
+    + "\">Remove</a> <span style=\"float: right;\">\"<i>";
+  if (stack2 = helpers.actualValue) { stack2 = stack2.call(depth0, {hash:{},data:data}); }
+  else { stack2 = depth0.actualValue; stack2 = typeof stack2 === functionType ? stack2.apply(depth0) : stack2; }
+  buffer += escapeExpression(stack2)
+    + "</i>\"</span>\n            <div style=\"clear: both;\"></div>\n          </div>\n        ";
+  return buffer;
+  }
 
-		$(function(){
-			if (Parse.User.current() !== null) {
-				init(Parse.User.current());
+  buffer += "<div class=\"ScrapyIOmodal-dialog\">\n  <div class=\"ScrapyIOmodal-content\">\n    <div class=\"ScrapyIOmodal-header\">\n      <h1 class=\"ScrapyIOmodal-title\">Your crawler</h1>\n    </div>\n    <div class=\"ScrapyIOmodal-body\">\n      <p>\n        <h3>You have selected <b>"
+    + escapeExpression(((stack1 = ((stack1 = depth0.dataList),stack1 == null || stack1 === false ? stack1 : stack1.length)),typeof stack1 === functionType ? stack1.apply(depth0) : stack1))
+    + "</b> things to be scraped.</h3>\n        ";
+  stack2 = helpers.each.call(depth0, depth0.dataList, {hash:{},inverse:self.noop,fn:self.program(1, program1, data),data:data});
+  if(stack2 || stack2 === 0) { buffer += stack2; }
+  buffer += "  \n\n        <hr>\n\n        <h3>This scraper is going to match:</h3>\n        <div><input type=\"text\" value=\"";
+  if (stack2 = helpers.regex) { stack2 = stack2.call(depth0, {hash:{},data:data}); }
+  else { stack2 = depth0.regex; stack2 = typeof stack2 === functionType ? stack2.apply(depth0) : stack2; }
+  buffer += escapeExpression(stack2)
+    + "\" class=\"ScrapyIOinputForm\" /></div>\n\n      </p>\n    </div>\n    <div class=\"ScrapyIOmodal-footer\">\n      <button type=\"button\" class=\"btn btn-default ScrapyIOcancelModal\" data-dismiss=\"ScrapyIOmodal\">Cancel</button>\n      <button type=\"button\" class=\"btn btn-primary\">Save changes</button>\n    </div>\n  </div><!-- /.modal-content -->\n</div><!-- /.modal-dialog -->";
+  return buffer;
+  });
+
+this["Templates"]["app/scripts/views/templates/ModalEmpty.hbs"] = Handlebars.template(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  
+
+
+  return "<div class=\"ScrapyIOmodal-dialog\">\n  <div class=\"ScrapyIOmodal-content\">\n    <div class=\"ScrapyIOmodal-header\">\n      <h4 class=\"ScrapyIOmodal-title\">Your crawler</h4>\n    </div>\n    <div class=\"ScrapyIOmodal-body\">\n      <p>You haven't added any data to scrape for this website.</p>\n    </div>\n    <div class=\"ScrapyIOmodal-footer\">\n      <button type=\"button\" class=\"btn btn-default ScrapyIOcancelModal\" data-dismiss=\"ScrapyIOmodal\">Cancel</button>\n      <button type=\"button\" class=\"btn btn-primary\">Save changes</button>\n    </div>\n  </div><!-- /.modal-content -->\n</div><!-- /.modal-dialog -->";
+  });
+
+return this["Templates"];
+
+});
+/* ========================================================================
+ * Bootstrap: modal.js v3.0.0
+ * http://getbootstrap.com/javascript/#modals
+ * ========================================================================
+ * Copyright 2013 Twitter, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * ======================================================================== */
+
+
++function ($) { 
+
+  // MODAL CLASS DEFINITION
+  // ======================
+
+  var Modal = function (element, options) {
+    this.options   = options
+    this.$element  = $(element)
+    this.$backdrop =
+    this.isShown   = null
+
+    if (this.options.remote) this.$element.load(this.options.remote)
+  }
+
+  Modal.DEFAULTS = {
+      backdrop: true
+    , keyboard: true
+    , show: true
+  }
+
+  Modal.prototype.toggle = function (_relatedTarget) {
+    return this[!this.isShown ? 'show' : 'hide'](_relatedTarget)
+  }
+
+  Modal.prototype.show = function (_relatedTarget) {
+    var that = this
+    var e    = $.Event('show.bs.modal', { relatedTarget: _relatedTarget })
+
+    this.$element.trigger(e)
+
+    if (this.isShown || e.isDefaultPrevented()) return
+
+    this.isShown = true
+
+    this.escape()
+
+    this.$element.on('click.dismiss.modal', '[data-dismiss="modal"]', $.proxy(this.hide, this))
+
+    this.backdrop(function () {
+      var transition = $.support.transition && that.$element.hasClass('ScrapyIOfade')
+
+      if (!that.$element.parent().length) {
+        that.$element.appendTo(document.body) // don't move modals dom position
+      }
+
+      that.$element.show()
+
+      if (transition) {
+        that.$element[0].offsetWidth // force reflow
+      }
+
+      that.$element
+        .addClass('ScrapyIOin')
+        .attr('aria-hidden', false)
+
+      that.enforceFocus()
+
+      var e = $.Event('shown.bs.modal', { relatedTarget: _relatedTarget })
+
+      transition ?
+        that.$element.find('ScrapyIOmodal-dialog') // wait for modal to slide in
+          .one($.support.transition.end, function () {
+            that.$element.focus().trigger(e)
+          })
+          .emulateTransitionEnd(300) :
+        that.$element.focus().trigger(e)
+    })
+  }
+
+  Modal.prototype.hide = function (e) {
+    if (e) e.preventDefault()
+
+    e = $.Event('hide.bs.modal')
+
+    this.$element.trigger(e)
+
+    if (!this.isShown || e.isDefaultPrevented()) return
+
+    this.isShown = false
+
+    this.escape()
+
+    $(document).off('focusin.bs.modal')
+
+    this.$element
+      .removeClass('ScrapyIOin')
+      .attr('aria-hidden', true)
+      .off('click.dismiss.modal')
+
+    $.support.transition && this.$element.hasClass('ScrapyIOfade') ?
+      this.$element
+        .one($.support.transition.end, $.proxy(this.hideModal, this))
+        .emulateTransitionEnd(300) :
+      this.hideModal()
+  }
+
+  Modal.prototype.enforceFocus = function () {
+    $(document)
+      .off('focusin.bs.modal') // guard against infinite focus loop
+      .on('focusin.bs.modal', $.proxy(function (e) {
+        if (this.$element[0] !== e.target && !this.$element.has(e.target).length) {
+          this.$element.focus()
+        }
+      }, this))
+  }
+
+  Modal.prototype.escape = function () {
+    if (this.isShown && this.options.keyboard) {
+      this.$element.on('keyup.dismiss.bs.modal', $.proxy(function (e) {
+        e.which == 27 && this.hide()
+      }, this))
+    } else if (!this.isShown) {
+      this.$element.off('keyup.dismiss.bs.modal')
+    }
+  }
+
+  Modal.prototype.hideModal = function () {
+    var that = this
+    this.$element.hide()
+    this.backdrop(function () {
+      that.removeBackdrop()
+      that.$element.trigger('hidden.bs.modal')
+    })
+  }
+
+  Modal.prototype.removeBackdrop = function () {
+    this.$backdrop && this.$backdrop.remove()
+    this.$backdrop = null
+  }
+
+  Modal.prototype.backdrop = function (callback) {
+    var that    = this
+    var animate = this.$element.hasClass('ScrapyIOfade') ? 'ScrapyIOfade' : ''
+
+    if (this.isShown && this.options.backdrop) {
+      var doAnimate = $.support.transition && animate
+
+      this.$backdrop = $('<div class="ScrapyIOmodal-backdrop ' + animate + '" />')
+        .appendTo(document.body)
+
+      this.$element.on('click.dismiss.modal', $.proxy(function (e) {
+        if (e.target !== e.currentTarget) return
+        this.options.backdrop == 'static'
+          ? this.$element[0].focus.call(this.$element[0])
+          : this.hide.call(this)
+      }, this))
+
+      if (doAnimate) this.$backdrop[0].offsetWidth // force reflow
+
+      this.$backdrop.addClass('ScrapyIOin')
+
+      if (!callback) return
+
+      doAnimate ?
+        this.$backdrop
+          .one($.support.transition.end, callback)
+          .emulateTransitionEnd(150) :
+        callback()
+
+    } else if (!this.isShown && this.$backdrop) {
+      this.$backdrop.removeClass('ScrapyIOin')
+
+      $.support.transition && this.$element.hasClass('ScrapyIOfade')?
+        this.$backdrop
+          .one($.support.transition.end, callback)
+          .emulateTransitionEnd(150) :
+        callback()
+
+    } else if (callback) {
+      callback()
+    }
+  }
+
+
+  // MODAL PLUGIN DEFINITION
+  // =======================
+
+  var old = $.fn.modal
+
+  $.fn.modal = function (option, _relatedTarget) {
+    return this.each(function () {
+      var $this   = $(this)
+      var data    = $this.data('bs.modal')
+      var options = $.extend({}, Modal.DEFAULTS, $this.data(), typeof option == 'object' && option)
+
+      if (!data) $this.data('bs.modal', (data = new Modal(this, options)))
+      if (typeof option == 'string') data[option](_relatedTarget)
+      else if (options.show) data.show(_relatedTarget)
+    })
+  }
+
+  $.fn.modal.Constructor = Modal
+
+
+  // MODAL NO CONFLICT
+  // =================
+
+  $.fn.modal.noConflict = function () {
+    $.fn.modal = old
+    return this
+  }
+
+
+  // MODAL DATA-API
+  // ==============
+
+  $(document).on('click.bs.modal.data-api', '[data-toggle="modal"]', function (e) {
+    var $this   = $(this)
+    var href    = $this.attr('href')
+    var $target = $($this.attr('data-target') || (href && href.replace(/.*(?=#[^\s]+$)/, ''))) //strip for ie7
+    var option  = $target.data('modal') ? 'toggle' : $.extend({ remote: !/#/.test(href) && href }, $target.data(), $this.data())
+
+    e.preventDefault()
+
+    $target
+      .modal(option, this)
+      .one('hide', function () {
+        $this.is(':visible') && $this.focus()
+      })
+  })
+
+  $(document)
+    .on('show.bs.modal',  '.modal', function () { $(document.body).addClass('modal-open') })
+    .on('hidden.bs.modal', '.modal', function () { $(document.body).removeClass('modal-open') })
+
+}(window.jQuery);
+
+define("libs/bootstrap-modals", ["libs/jquery"], function(){});
+
+define('views/SaveModalView',['libs/parse', 'handlebars', '../templates', 'libs/bootstrap-modals', 'libs/lodash', 'libs/jquery'], function(Parse, Handlebars, Templates, _bm, _, $){
+
+	var template = Templates['app/scripts/views/templates/Modal.hbs'];
+	var templateNoCrawler = Templates['app/scripts/views/templates/ModalEmpty.hbs'];
+
+	var view = Parse.View.extend({
+		tagName: "div",
+		className: "ScrapyIOmodal ScrapyIOfade",
+		attributes:{
+			tabindex: "-1",
+			style: "display: block;",
+			role: "dialog",
+			"aria-hidden": "true",
+			"aria-labelledby": "ScrapyIOSaveModalView"
+		},
+		events:{
+			'click .ScrapyIOcancelModal': 'closeModal'
+		},
+		initialize: function() {
+			_.bindAll(this, 'closeModal');
+		},	
+		render: function() {
+			var modelData = this.model.toJSON();
+
+			if (!modelData.regex) modelData.regex = window.location.href;
+			if (modelData.selectors && _.isObject(modelData.selectors)) {
+				var dataList = [];
+				_.keys(modelData.selectors).forEach(function(title){
+					var jqSel = modelData.selectors[title];
+					dataList.push({
+						name: title,
+						actualValue: $(jqSel).text() 
+					});
+				});
+				console.log(dataList);
+				modelData.dataList = dataList;
 			}
-			else {
-				Parse.User.signUp("testing"+new Date().getTime(), "testing")
-				.then(init, initFailed);
-			}
-			// Only launch app once
-			KeyboardJSHandler.clear();
-			KeyboardJSHandler = null;
-		});  	
+
+			this.$el.html(template(modelData));
+			this.$el.modal();
+
+			return this;
+		},
+		closeModal: function() {
+			this.$el.modal('hide');
+			this.$el.data('modal', null);
+			return this;
+		}
 	});
 
 
 
+	return view;
+
+
+
+});
+require(
+	['libs/livereload',
+	'libs/KeyboardJS', 
+	'libs/jquery', 
+	'helpers/DOM', 
+	'libs/parse',
+	'data/Scraper', 
+	'helpers/Hub',
+	'libs/lodash',
+	'libs/smoke',
+	'views/CounterView',
+	'views/SaveModalView'], 
+	function(livereload, KeyboardJS, $, DOM, Parse, Scraper, Hub, _, smoke, CounterView, SaveModalView){
+
+
+	var inited = false;
+	var crawlerLoadedDefer = $.Deferred();
+	var crawlerLoadedPromise = crawlerLoadedDefer.promise();
+
+	// app entry is special combo key
+	$(function(){
+		DOM.appendLogo();
+
+
+		$('div#scrape-logo').on('click', function(){	
+			if (!inited) {
+				$(this).addClass('fixed');
+				// Init Parse
+				Parse.initialize("beTbPGy1fDKd4CkrbR6xqe3ZKa5KORh1FfYyr1S3", "5K3zERQWuyxLx06CZ1RO95KqkbnMivPAWUrWjurs");
+
+				if (Parse.User.current() !== null) {
+					init(Parse.User.current());
+				}
+				else {
+					Parse.User.signUp("testing"+new Date().getTime(), "testing")
+					.then(init, initFailed);
+				}
+			} 
+			else {
+				// Save / options modal
+				crawlerLoadedPromise.then(function(scraper){
+					var view = new SaveModalView({model: scraper});
+					$('body').append(view.render().$el);
+				});
+			}
+		});
+
+
+
+	});
+
+
+	
 	var sel;
 	var currentScraper;
 
 	/// Init app
 
 	function init(user) {
-
-		DOM.wrapText();
-		sel = DOM.selector();
-		DOM.bindElements(sel);
-		DOM.highlightText(sel);
-		DOM.appendLogo();
 
 		// Let's see if a crawler has already been setup for this page
 
@@ -31552,9 +32424,29 @@ require(
 				var model = new Scraper.model;
 			}
 			currentScraper = model;
-			var pageStats = new PageStats({model: model});
-			$('div.scrape-logo').append(pageStats.render().$el);
+			crawlerLoadedDefer.resolve(model);
 
+			/// DOM PROCESSING
+
+			DOM.wrapText();
+			sel = DOM.selector();
+			DOM.unbindLinks();
+			DOM.bindElements(sel, function(name, elem, uniqueSelector, previousName){
+				if (name !== false) {
+					Hub.emit('addedNewSelectorWithName', {
+						name: name,
+						selector: uniqueSelector,
+						previousName: previousName
+					})
+				}
+			});
+			DOM.highlightText(sel);
+
+			// Render counter;
+			var counterView = new CounterView({model: currentScraper});
+			$('body').append(counterView.render().$el);
+
+			inited = true;
 		});
 
 	}
@@ -31570,12 +32462,22 @@ require(
 		var actualObject = currentScraper.get('selectors') ? currentScraper.get('selectors') : {};
 		var newSelector = {};
 		newSelector[model.name] = model.selector;
+
+		console.log(newSelector);
+
 		var newObject = _.extend(actualObject, newSelector);
+
+		if (model.previousName) {
+			delete newObject[model.previousName];
+			console.log('** Removed ' + model.previousName + ' **');
+		}
+
 		console.log(newObject);
 		currentScraper.set('selectors', newObject);
 		currentScraper.save()
 		.then(function(model){
 			DOM.highlightSelected(model.get('selectors'));
+			DOM.setLogoOnAlert();
 		})
 	});
 

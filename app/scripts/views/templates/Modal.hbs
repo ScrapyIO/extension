@@ -1,0 +1,28 @@
+<div class="ScrapyIOmodal-dialog">
+  <div class="ScrapyIOmodal-content">
+    <div class="ScrapyIOmodal-header">
+      <h1 class="ScrapyIOmodal-title">Your crawler</h1>
+    </div>
+    <div class="ScrapyIOmodal-body">
+      <p>
+        <h3>You have selected <b>{{dataList.length}}</b> things to be scraped.</h3>
+        {{#each dataList}}
+          <div class="ScrapyIOattributeRow">
+            <b>{{name}}</b><a href="" class="ScrapyIOdeleteAttribute" data-attribute="{{dataList.name}}">Remove</a> <span style="float: right;">"<i>{{actualValue}}</i>"</span>
+            <div style="clear: both;"></div>
+          </div>
+        {{/each}}  
+
+        <hr>
+
+        <h3>This scraper is going to match:</h3>
+        <div><input type="text" value="{{regex}}" class="ScrapyIOinputForm" /></div>
+
+      </p>
+    </div>
+    <div class="ScrapyIOmodal-footer">
+      <button type="button" class="btn btn-default ScrapyIOcancelModal" data-dismiss="ScrapyIOmodal">Cancel</button>
+      <button type="button" class="btn btn-primary">Save changes</button>
+    </div>
+  </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->

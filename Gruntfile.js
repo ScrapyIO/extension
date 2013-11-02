@@ -45,6 +45,10 @@ module.exports = function (grunt) {
             js:{
                 files: ['<%= yeoman.app %>/scripts/**/*.js'],
                 tasks: ['build-require']
+            },
+            templates:{
+                files: ['<%= yeoman.app %>/scripts/views/templates/**/*.hbs'],
+                tasks: ['handlebars', 'build-require']
             }
         },
         connect: {
@@ -307,15 +311,32 @@ module.exports = function (grunt) {
                     "libs/parse": {
                         exports: "Parse"
                     },
-                    "libs/handlebars": {
+                    "handlebars": {
                         exports: "Handlebars"
                     },
                     "libs/lodash":{
                         exports: "_"
+                    },
+                    "libs/bootstrap-modals":{
+                        deps: ['libs/jquery']
+                    },
+                    "libs/q":{
+                        exports: "Q"
                     }
                   }
                 }
             }
+        },
+        handlebars:{
+            compile: {
+                options: {
+                  namespace: "Templates",
+                  amd: true
+                },
+                files: {
+                   "app/scripts/templates.js": ["app/scripts/views/templates/**/*.hbs"]
+                }
+              }
         }
     });
 
